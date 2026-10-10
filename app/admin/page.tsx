@@ -67,18 +67,28 @@ export default function AdminPanel() {
             setLoading(false);
             return;
           }
-          const fileName = `${Date.now()}-${file.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from('product-images')
-            .upload(fileName, file);
 
-          if (uploadError) throw uploadError;
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-          const { data: publicUrlData } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(fileName);
+          // Direct Storage Fetch Upload to support new Supabase publishable keys without token errors
+          const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${supabaseAnonKey}`,
+              'Content-Type': file.type || 'application/octet-stream',
+            },
+            body: file,
+          });
 
-          imageUrls.push(publicUrlData.publicUrl);
+          if (!uploadRes.ok) {
+            const errJson = await uploadRes.json();
+            throw new Error(errJson.message || 'Image upload failed');
+          }
+
+          const publicUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${fileName}`;
+          imageUrls.push(publicUrl);
         }
       }
 
@@ -216,7 +226,6 @@ export default function AdminPanel() {
           </button>
         </form>
 
-        {/* Existing Products list for Admin */}
         <div className="mt-10 border-t pt-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Manage Existing Products ({products.length})</h2>
           <div className="space-y-3">
