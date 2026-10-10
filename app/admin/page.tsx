@@ -71,24 +71,18 @@ export default function AdminPanel() {
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-          // Direct Storage Fetch Upload to support new Supabase publishable keys without token errors
-          const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseAnonKey,
-              'Authorization': `Bearer ${supabaseAnonKey}`,
-              'Content-Type': file.type || 'application/octet-stream',
-            },
-            body: file,
-          });
+          // Official Supabase SDK storage upload method (Fixes JWS error)
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file);
 
-          if (!uploadRes.ok) {
-            const errJson = await uploadRes.json();
-            throw new Error(errJson.message || 'Image upload failed');
-          }
+          if (uploadError) throw uploadError;
 
-          const publicUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${fileName}`;
-          imageUrls.push(publicUrl);
+          const { data: publicUrlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+
+          imageUrls.push(publicUrlData.publicUrl);
         }
       }
 
