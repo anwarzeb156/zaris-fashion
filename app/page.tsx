@@ -60,6 +60,8 @@ export default function Home() {
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
       setDeferredPrompt(null);
+    } else {
+      alert('📲 App screen par save karne ke liye browser menu ya share button se "Add to Home Screen" choose karein.');
     }
   };
 
@@ -73,23 +75,21 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-      {/* App Header with Direct Install Button */}
+      {/* Permanent Header with Always-Visible Install Button */}
       <header className="bg-rose-700 text-white py-4 px-4 shadow-md sticky top-0 z-50 flex items-center justify-between max-w-5xl mx-auto rounded-b-xl">
         <div className="text-left">
           <h1 className="text-xl font-bold tracking-wide">Zari's Fashion</h1>
           <p className="text-rose-100 text-[10px]">Abayas & Luxury Fragrances</p>
         </div>
 
-        {/* Direct Install Button without any text popup */}
-        {deferredPrompt && (
-          <button
-            onClick={handleInstallClick}
-            className="bg-amber-400 hover:bg-amber-500 text-gray-900 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-lg transition transform active:scale-95 animate-bounce"
-          >
-            <span className="text-base">📲</span>
-            <span>Install App</span>
-          </button>
-        )}
+        {/* ALWAYS VISIBLE INSTALL BUTTON */}
+        <button
+          onClick={handleInstallClick}
+          className="bg-amber-400 hover:bg-amber-500 text-gray-900 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-lg transition transform active:scale-95 animate-bounce"
+        >
+          <span className="text-base">📲</span>
+          <span>Install App</span>
+        </button>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
