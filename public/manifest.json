@@ -1,0 +1,21 @@
+{
+  "name": "Zari's Fashion",
+  "short_name": "Zari's Fashion",
+  "description": "Handcrafted Abayas & Exclusive Perfume Brand",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#be123c",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
