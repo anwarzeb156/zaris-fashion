@@ -1,146 +1,245 @@
-"use client";
-import { useState } from "react";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ouvnjumdagvuzavmxhgj.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_iwI39JBrd7cfHt32thFphg_K9Sqp';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+interface Product {
+  id: string;
+  title: string;
+  price: string;
+  category: string;
+  description: string;
+  image: string;
+  images?: string[];
+}
 
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pin, setPin] = useState("");
-  
-  // Product Form State
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("abaya");
-  const [description, setDescription] = useState("");
-  const [image, setImage] = useState<File | null>(null);
+  const [pin, setPin] = useState('');
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('Abaya');
+  const [price, setPrice] = useState('');
+  const [description, setDescription] = useState('');
+  const [imageFiles, setImageFiles] = useState<FileList | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
 
-  // Simple PIN code protection (Default PIN: 1234)
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchProducts();
+    }
+  }, [isAuthenticated]);
+
+  async function fetchProducts() {
+    const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (data) setProducts(data);
+  }
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === "1234") {
+    if (pin === '1234') {
       setIsAuthenticated(true);
     } else {
-      alert("Incorrect PIN code! Try again.");
+      alert('Incorrect PIN. Try 1234');
     }
   };
 
-  const handleAddProduct = (e: React.FormEvent) => {
+  const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !price || !image) {
-      alert("Please fill all details and select an image!");
+    if (!title || !price) {
+      alert('Please fill in title and price.');
       return;
     }
 
-    alert(`Product "${title}" added successfully!`);
-    // Clear Form
-    setTitle("");
-    setPrice("");
-    setDescription("");
-    setImage(null);
+    setLoading(true);
+    try {
+      let imageUrls: string[] = [];
+
+      if (imageFiles && imageFiles.length > 0) {
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          if (file.size > 25 * 1024 * 1024) {
+            alert(`File ${file.name} is larger than 25MB limit.`);
+            setLoading(false);
+            return;
+          }
+          const fileName = `${Date.now()}-${file.name}`;
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+
+          imageUrls.push(publicUrlData.publicUrl);
+        }
+      }
+
+      const mainImage = imageUrls.length > 0 ? imageUrls[0] : '';
+
+      const { error: dbError } = await supabase.from('products').insert([
+        {
+          title,
+          category,
+          price,
+          description,
+          image: mainImage,
+          images: imageUrls
+        }
+      ]);
+
+      if (dbError) throw dbError;
+
+      alert(`Product "${title}" added successfully with ${imageUrls.length} images!`);
+      setTitle('');
+      setPrice('');
+      setDescription('');
+      setImageFiles(null);
+      fetchProducts();
+    } catch (error: any) {
+      alert('Error uploading product: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this product?')) {
+      await supabase.from('products').delete().eq('id', id);
+      fetchProducts();
+    }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-sm text-center">
-          <h2 className="text-xl font-bold text-rose-700">Zari's Fashion Admin</h2>
-          <p className="text-xs text-gray-500 mt-1">Enter PIN to access dashboard</p>
-          <form onSubmit={handleLogin} className="mt-4 flex flex-col gap-3">
-            <input
-              type="password"
-              placeholder="Enter PIN (Default: 1234)"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="p-2 border rounded-lg text-center text-lg tracking-widest focus:outline-rose-600"
-            />
-            <button
-              type="submit"
-              className="bg-rose-700 text-white py-2 rounded-lg font-semibold hover:bg-rose-800 transition"
-            >
-              Unlock Dashboard
-            </button>
-          </form>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Admin Panel</h2>
+          <input
+            type="password"
+            maxLength={4}
+            placeholder="Enter 4-digit PIN (1234)"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            className="w-full px-4 py-3 border rounded-xl text-center text-lg tracking-widest mb-4 focus:outline-rose-600"
+          />
+          <button type="submit" className="w-full bg-rose-700 text-white py-3 rounded-xl font-semibold hover:bg-rose-800 transition">
+            Login
+          </button>
+        </form>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4 max-w-xl mx-auto">
-      <div className="flex justify-between items-center mb-6 border-b pb-3">
-        <div>
-          <h1 className="text-2xl font-bold text-rose-700">Add New Product</h1>
-          <p className="text-xs text-gray-500">Upload new Abayas or Perfumes</p>
-        </div>
-        <button
-          onClick={() => setIsAuthenticated(false)}
-          className="text-xs text-red-600 underline font-semibold"
-        >
-          Logout
-        </button>
-      </div>
-
-      <form onSubmit={handleAddProduct} className="bg-white p-5 rounded-xl shadow space-y-4">
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Product Title</label>
-          <input
-            type="text"
-            placeholder="e.g. Silk Butterfly Abaya"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-2 border rounded-lg text-sm focus:outline-rose-600"
-          />
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Add New Product (Multi-Image 25MB)</h1>
+          <button onClick={() => setIsAuthenticated(false)} className="text-sm text-rose-600 font-semibold hover:underline">
+            Logout
+          </button>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Category</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full p-2 border rounded-lg text-sm focus:outline-rose-600 bg-white"
+        <form onSubmit={handlePublish} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Product Title</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-sm focus:outline-rose-600"
+              placeholder="e.g., Luxury Velvet Abaya"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-sm bg-white focus:outline-rose-600"
+            >
+              <option value="Abaya">Abaya</option>
+              <option value="Perfumes & Cosmetics">Perfumes & Cosmetics</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Price (PKR)</label>
+            <input
+              type="text"
+              required
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-sm focus:outline-rose-600"
+              placeholder="e.g., 6500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-sm focus:outline-rose-600"
+              placeholder="Fabric detail, sizes, or scent notes..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Upload Product Photos (Multiple up to 25MB each)</label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => setImageFiles(e.target.files)}
+              className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-rose-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-rose-800 transition disabled:bg-gray-400"
           >
-            <option value="abaya">👗 Abaya</option>
-            <option value="cosmetics">✨ Perfume & Cosmetics</option>
-          </select>
-        </div>
+            {loading ? 'Uploading Images & Publishing...' : 'Publish Product'}
+          </button>
+        </form>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Price (PKR)</label>
-          <input
-            type="text"
-            placeholder="e.g. Rs. 4,500"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="w-full p-2 border rounded-lg text-sm focus:outline-rose-600"
-          />
+        {/* Existing Products list for Admin */}
+        <div className="mt-10 border-t pt-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Manage Existing Products ({products.length})</h2>
+          <div className="space-y-3">
+            {products.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-3 border rounded-xl bg-gray-50">
+                <div className="flex items-center gap-3">
+                  {p.image && <img src={p.image} alt={p.title} className="w-12 h-12 object-cover rounded-lg" />}
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-800">{p.title}</h4>
+                    <p className="text-xs text-gray-500">Rs. {p.price} | {p.category}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDelete(p.id)}
+                  className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-red-100 transition"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
-          <textarea
-            placeholder="Fabric detail, sizes, or scent notes..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="w-full p-2 border rounded-lg text-sm focus:outline-rose-600"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Upload Product Photo</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)}
-            className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="w-full bg-rose-700 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-rose-800 transition shadow mt-2"
-        >
-          Publish Product
-        </button>
-      </form>
-    </main>
+      </div>
+    </div>
   );
 }

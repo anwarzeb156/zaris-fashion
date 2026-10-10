@@ -71,7 +71,7 @@ export default function Home() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {tab === 'Abaya' ? '👗 Abayas' : tab === 'Perfumes & Cosmetics' ? '✨ Perfumes & Cosmetics' : '📦 All Items'}
+              {tab === 'Abaya' ? '👗 Abaya' : tab === 'Perfumes & Cosmetics' ? '✨ Perfumes & Cosmetics' : '📦 All Items'}
             </button>
           ))}
         </div>
