@@ -14,12 +14,14 @@ interface Product {
   category: string;
   description: string;
   image: string;
+  images?: string[];
 }
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState('All Items');
   const [loading, setLoading] = useState(true);
+  const [selectedImageMap, setSelectedImageMap] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchProducts();
@@ -43,75 +45,114 @@ export default function Home() {
 
   const filteredProducts = activeTab === 'All Items' 
     ? products 
-    : products.filter(p => p.category === activeTab);
+    : products.filter(p => p.category.toLowerCase().includes(activeTab.toLowerCase().replace('s', '')));
+
+  const handleThumbnailClick = (productId: string, imgUrl: string) => {
+    setSelectedImageMap((prev) => ({ ...prev, [productId]: imgUrl }));
+  };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-rose-700 text-white py-6 px-4 text-center">
-        <h1 className="text-3xl font-bold">Zari's Fashion</h1>
-        <p className="text-rose-100 text-sm mt-1">Abayas & Luxury Fragrances</p>
+    <div className="min-h-screen bg-gray-50 pb-12">
+      {/* App-like Header */}
+      <header className="bg-rose-700 text-white py-5 px-4 text-center shadow-md sticky top-0 z-50">
+        <h1 className="text-2xl font-bold tracking-wide">Zari's Fashion</h1>
+        <p className="text-rose-100 text-xs mt-0.5">Abayas & Luxury Fragrances</p>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-semibold text-gray-800">Welcome to Zari's Fashion</h2>
-          <p className="text-gray-500 text-sm mt-1">Handcrafted Abayas & Exclusive Perfume Brand</p>
+      <main className="max-w-5xl mx-auto px-4 pt-6">
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold text-gray-800">Welcome to Zari's Fashion</h2>
+          <p className="text-gray-500 text-xs mt-1">Handcrafted Abayas & Exclusive Perfume Brand</p>
         </div>
 
         {/* Category Tabs */}
-        <div className="flex justify-center gap-3 mb-8">
+        <div className="flex justify-center gap-2 mb-8 overflow-x-auto pb-2">
           {['All Items', 'Abaya', 'Perfumes & Cosmetics'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+              className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition ${
                 activeTab === tab 
-                  ? 'bg-rose-700 text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-rose-700 text-white shadow-sm' 
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
               }`}
             >
-              {tab === 'Abaya' ? '👗 Abaya' : tab === 'Perfumes & Cosmetics' ? '✨ Perfumes & Cosmetics' : '📦 All Items'}
+              {tab === 'Abaya' ? '👗 Abayas' : tab === 'Perfumes & Cosmetics' ? '✨ Perfumes & Cosmetics' : '📦 All Items'}
             </button>
           ))}
         </div>
 
         {/* Products Grid */}
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading products...</div>
+          <div className="text-center py-16 text-gray-500 font-medium text-sm">Loading inventory...</div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">No products found. Add products from the admin panel!</div>
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 p-8">
+            <p className="text-gray-500 text-sm font-medium">No products found in this category.</p>
+            <p className="text-gray-400 text-xs mt-1">Upload items from the admin panel!</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
-                <div className="h-48 bg-gray-100 relative">
-                  {product.image ? (
-                    <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">No Image</div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <span className="inline-block px-2 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 rounded mb-2">
-                    {product.category}
-                  </span>
-                  <h3 className="font-bold text-gray-800 text-lg mb-1">{product.title}</h3>
-                  <p className="text-gray-600 text-xs mb-4 line-clamp-2">{product.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-gray-900">Rs. {product.price}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.map((product) => {
+              const allImages = product.images && product.images.length > 0 
+                ? product.images 
+                : product.image ? [product.image] : [];
+              const currentImage = selectedImageMap[product.id] || allImages[0] || '';
+
+              return (
+                <div key={product.id} className="bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                  <div>
+                    {/* Main Product Image Display */}
+                    <div className="h-64 bg-gray-100 relative overflow-hidden">
+                      {currentImage ? (
+                        <img src={currentImage} alt={product.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-400 text-xs">No Image Available</div>
+                      )}
+                    </div>
+
+                    {/* Thumbnails list if multiple images exist */}
+                    {allImages.length > 1 && (
+                      <div className="flex gap-2 p-2 bg-gray-50 overflow-x-auto border-b">
+                        {allImages.map((img, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleThumbnailClick(product.id, img)}
+                            className={`w-10 h-10 rounded-lg overflow-hidden border-2 flex-shrink-0 transition ${
+                              currentImage === img ? 'border-rose-600' : 'border-transparent opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="p-4">
+                      <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 rounded mb-2">
+                        {product.category}
+                      </span>
+                      <h3 className="font-bold text-gray-800 text-base mb-1">{product.title}</h3>
+                      <p className="text-gray-600 text-xs mb-4 leading-relaxed">{product.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 pt-0 border-t border-gray-100 mt-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-gray-400 block font-semibold">PRICE</span>
+                      <span className="font-bold text-gray-900 text-base">Rs. {product.price}</span>
+                    </div>
                     <a
                       href={`https://wa.me/?text=Hi,%20I%20want%20to%20order%20${encodeURIComponent(product.title)}%20priced%20at%20Rs.%20${product.price}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition"
+                      className="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm"
                     >
                       Order via WhatsApp
                     </a>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
