@@ -23,7 +23,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedImageMap, setSelectedImageMap] = useState<{ [key: string]: string }>({});
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -31,7 +30,6 @@ export default function Home() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallBanner(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -60,13 +58,8 @@ export default function Home() {
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setShowInstallBanner(false);
-      }
+      await deferredPrompt.userChoice;
       setDeferredPrompt(null);
-    } else {
-      alert('📲 App Install Karne Ke Liye:\n\n• Android: Browser menu se "Add to Home Screen" par click karein.\n• iPhone: Share button par click karke "Add to Home Screen" chunein.');
     }
   };
 
@@ -80,40 +73,26 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-      {/* App-like Header */}
+      {/* App Header with Direct Install Button */}
       <header className="bg-rose-700 text-white py-4 px-4 shadow-md sticky top-0 z-50 flex items-center justify-between max-w-5xl mx-auto rounded-b-xl">
         <div className="text-left">
           <h1 className="text-xl font-bold tracking-wide">Zari's Fashion</h1>
           <p className="text-rose-100 text-[10px]">Abayas & Luxury Fragrances</p>
         </div>
 
-        {/* Prominent Install App Button for easy access */}
-        <button
-          onClick={handleInstallClick}
-          className="bg-amber-400 hover:bg-amber-500 text-gray-900 px-3 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-lg transition transform active:scale-95 animate-bounce"
-        >
-          <span className="text-sm">📲</span>
-          <span>Install App</span>
-        </button>
+        {/* Direct Install Button without any text popup */}
+        {deferredPrompt && (
+          <button
+            onClick={handleInstallClick}
+            className="bg-amber-400 hover:bg-amber-500 text-gray-900 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-lg transition transform active:scale-95 animate-bounce"
+          >
+            <span className="text-base">📲</span>
+            <span>Install App</span>
+          </button>
+        )}
       </header>
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
-        {/* Banner for easy visual understanding */}
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-6 text-center flex items-center justify-between flex-wrap gap-2">
-          <div className="text-left">
-            <p className="text-xs font-bold text-rose-800 flex items-center gap-1">
-              <span>📱</span> Mobile App Apne Phone Mein Save Karein!
-            </p>
-            <p className="text-[11px] text-gray-600">Ek click mein app ki tarah open hoga.</p>
-          </div>
-          <button
-            onClick={handleInstallClick}
-            className="bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:bg-rose-800 transition"
-          >
-            📲 Add to Phone
-          </button>
-        </div>
-
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-gray-800">Welcome to Zari's Fashion</h2>
           <p className="text-gray-500 text-xs mt-1">Handcrafted Abayas & Exclusive Perfume Brand</p>
