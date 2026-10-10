@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ouvnjumdagvuzavmxhgj.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_iwI39JBrd7cfHt32thFphg_K9Sqp';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Product {
   id: string;
