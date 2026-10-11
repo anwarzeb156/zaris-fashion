@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://ouvnjumdagvuzavmxhgj.supabase.co';
-const supabaseAnonKey = 'sb_publishable_iwI39JBrd7cfHt32thFphg_KeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91dm5qdW1kYWd2dXphdm14aGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NjI3NDAsImV4cCI6MjEwNzIzODc0MH0.KFyMbaEV0mr9HYN3sYqAQ2GP47_qvxS7ZQCWBao5ahw';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91dm5qdW1kYWd2dXphdm14aGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyMzg2NjYsImV4cCI6MjA1NjgxNDY2Nn0.eyJjYW1wYWlnbiI6InBsYXRmb3JtX3JlZmVycmFsIn0.eyjJb2NpcCI6InBsYXRmb3JtX3JlZmVycmFsIn0';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Product {
@@ -48,15 +48,6 @@ export default function AdminPanel() {
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !price) {
@@ -71,8 +62,26 @@ export default function AdminPanel() {
       if (imageFiles && imageFiles.length > 0) {
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
-          const base64String = await fileToBase64(file);
-          imageUrls.push(base64String);
+          if (file.size > 25 * 1024 * 1024) {
+            alert(`File ${file.name} is larger than 25MB limit.`);
+            setLoading(false);
+            return;
+          }
+
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+
+          imageUrls.push(publicUrlData.publicUrl);
         }
       }
 
@@ -115,7 +124,7 @@ export default function AdminPanel() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
         <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Zari's Fashion Admin</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Admin Panel</h2>
           <input
             type="password"
             maxLength={4}
@@ -136,7 +145,7 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold text-gray-800">Upload Product (Camera Ready)</h1>
+          <h1 className="text-xl font-bold text-gray-800">Add New Product</h1>
           <button onClick={() => setIsAuthenticated(false)} className="text-sm text-rose-600 font-semibold hover:underline">
             Logout
           </button>
@@ -144,14 +153,14 @@ export default function AdminPanel() {
 
         <form onSubmit={handlePublish} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Product Title / Name</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Product Title</label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full p-3 border rounded-xl text-sm focus:outline-rose-600"
-              placeholder="e.g. Black Luxury Abaya"
+              placeholder="e.g., Luxury Abaya"
             />
           </div>
 
@@ -175,23 +184,23 @@ export default function AdminPanel() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className="w-full p-3 border rounded-xl text-sm focus:outline-rose-600"
-              placeholder="e.g. 5500"
+              placeholder="e.g., 5500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Description / Details</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full p-3 border rounded-xl text-sm focus:outline-rose-600"
-              placeholder="Write details here..."
+              placeholder="Details..."
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">📸 Select Photo from Phone Camera / Gallery</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Upload Photos</label>
             <input
               type="file"
               multiple
@@ -206,12 +215,12 @@ export default function AdminPanel() {
             disabled={loading}
             className="w-full bg-rose-700 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-rose-800 transition disabled:bg-gray-400 shadow-md"
           >
-            {loading ? 'Uploading Picture...' : '✨ Upload & Publish Now'}
+            {loading ? 'Publishing...' : 'Publish Product'}
           </button>
         </form>
 
         <div className="mt-10 border-t pt-6">
-          <h2 className="text-base font-bold text-gray-800 mb-4">Uploaded Products ({products.length})</h2>
+          <h2 className="text-base font-bold text-gray-800 mb-4">Existing Products ({products.length})</h2>
           <div className="space-y-3">
             {products.map((p) => (
               <div key={p.id} className="flex items-center justify-between p-3 border rounded-xl bg-gray-50">
